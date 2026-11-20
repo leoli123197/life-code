@@ -92,6 +92,20 @@ html.dark .modules button.on{color:#0c1512}
 .sec-list .srow[aria-current="true"]>button{color:var(--accent); font-weight:600}
 .sec-list .srow .fold{border:0; background:none; padding:0 3px; color:var(--ink-3); font-size:10px}
 .sec-list .srow .n{color:var(--ink-3); font-size:11.5px}
+/* 自测侧栏「按节细选」：左边一个方框，勾没勾一眼看得出（未勾＝空心描边，勾了＝实心 + 白勾） */
+#quiz-side .sec-list{gap:3px}
+#quiz-side .sec-list>button{display:flex; align-items:flex-start; gap:7px; width:100%; text-align:left;
+  border:1px solid var(--line-2); border-radius:7px; background:var(--panel); color:var(--ink-2);
+  padding:5px 8px; font-size:12.5px; line-height:1.45}
+#quiz-side .sec-list>button:hover{border-color:var(--ink-3); color:var(--ink)}
+#quiz-side .sec-list>button::before{content:''; flex:0 0 15px; width:15px; height:15px; margin-top:0;
+  border:1.5px solid var(--ink-3); border-radius:4px; background:var(--panel); color:transparent;
+  font:700 12px/13px var(--sans); text-align:center}
+#quiz-side .sec-list>button>i{margin-left:auto; flex:0 0 auto; font-style:normal; color:var(--ink-3); font-size:11.5px; padding-left:4px}
+#quiz-side .sec-list>button[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft); color:var(--ink); font-weight:600}
+#quiz-side .sec-list>button[aria-pressed="true"]::before{content:'✓'; background:var(--accent); border-color:var(--accent); color:#fff}
+#quiz-side .sec-list>button[aria-pressed="true"]>i{color:var(--accent); font-weight:600}
+html.dark #quiz-side .sec-list>button[aria-pressed="true"]::before{color:#0c1512}
 .toc{margin:0 0 6px; padding:0 0 4px 16px; list-style:none; border-left:2px solid var(--line)}
 .toc li{font-size:12.5px; line-height:1.5; padding:1px 0}
 .toc a{color:var(--ink-2); text-decoration:none}
@@ -421,8 +435,22 @@ dialog#ddata h3{font:600 17px/1.4 var(--serif); margin-bottom:8px}
 .tc-h{display:flex;flex-direction:column;gap:2px;min-width:0}
 .tc-t{font:600 16.5px/1.3 var(--serif);color:var(--ink);letter-spacing:.01em}
 .tc-d{font-size:12.5px;line-height:1.55;color:var(--ink-2)}
-.tc-go{font-size:14px;line-height:1;color:var(--ink-3);padding-top:3px}
+.tc-go{font-size:13px;line-height:1;color:var(--ink-3);padding-top:4px;transition:transform .16s ease}
 .tc-main:hover .tc-go,.tcard[data-on="1"] .tc-go{color:var(--ink-2)}
+/* 展开态：卡片铺满整行，节标题、导读、分组提示和条目全落在卡里，网格下面不再有散内容 */
+.tcard[data-open="1"]{grid-column:1/-1;transform:none;box-shadow:var(--shadow);
+  border-color:color-mix(in srgb,var(--tint) 32%,var(--line-2))}
+.tcard[data-open="1"]:hover{transform:none}
+.tcard[data-open="1"] .tc-go{transform:rotate(180deg);color:var(--ink-2)}
+.tc-body{padding:2px 15px 6px;border-top:1px dashed color-mix(in srgb,var(--tint) 45%,var(--line));margin-top:2px}
+.tc-body .sec-block{margin:0 0 26px}
+.tc-body .sec-block:last-child{margin-bottom:6px}
+.tc-body .sec-h{padding-top:12px;margin-bottom:10px;border-bottom-width:1px}
+.tc-body .sec-h h2{font-size:18px}
+.tc-body .sec-intro{font-size:13px}
+.tc-body .sec-intro.guide{background:var(--panel-2);border-left-color:color-mix(in srgb,var(--tint) 45%,var(--line-2))}
+.tc-body .card{box-shadow:none;background:var(--panel)}
+.tc-end{display:flex;justify-content:center;padding:2px 15px 12px}
 /* 卡片下半：条数胶囊 + 该块覆盖的节号（每个节号都能直接跳过去） */
 .tc-foot{display:flex;align-items:flex-start;gap:8px;padding:2px 13px 9px;flex-wrap:wrap}
 .tc-pill{flex:0 0 auto;font-size:12px;font-weight:600;color:var(--ink-2);line-height:1.5;
@@ -438,18 +466,6 @@ dialog#ddata h3{font:600 17px/1.4 var(--serif); margin-bottom:8px}
 .tc-bar .r3{background:var(--accent)}
 .tc-bar .r2{background:var(--gold)}
 .tc-bar .r1{background:color-mix(in srgb,var(--line-2) 72%,transparent)}
-/* 主题内导航条 */
-.tbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:8px 12px;
-  background:color-mix(in srgb,var(--tint) 55%,var(--panel));
-  border:1px solid color-mix(in srgb,var(--tint) 38%,var(--line));border-radius:var(--radius)}
-.tb-chip{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
-  background:var(--chip);color:var(--chip-ink)}
-.tb-chip .tc-svg{width:15px;height:15px}
-.tbar b{font:600 15.5px/1.3 var(--serif)}
-.tb-n{font-size:12.5px;color:var(--ink-3)}
-.tb-secs{display:flex;gap:3px 12px;flex-wrap:wrap;font-size:12.5px;margin-left:auto}
-.tb-secs a{color:var(--ink-2);text-decoration:none;border-bottom:1px dotted var(--line-2)}
-.tb-secs a:hover{color:var(--accent);border-bottom-color:var(--accent)}
 /* 侧栏：34 节按八大主题分组，组名可点，与卡片同一口径 */
 .sec-g{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:13px 0 3px}
 .sec-g:first-child{margin-top:0}
@@ -463,15 +479,14 @@ dialog#ddata h3{font:600 17px/1.4 var(--serif); margin-bottom:8px}
 html.dark .tcard{background:color-mix(in srgb,var(--tint) 15%,var(--panel));
   border-color:color-mix(in srgb,var(--tint) 24%,var(--line))}
 html.dark .tcard:hover{border-color:color-mix(in srgb,var(--tint) 45%,var(--line-2))}
-html.dark .tbar{background:color-mix(in srgb,var(--tint) 12%,var(--panel));
-  border-color:color-mix(in srgb,var(--tint) 20%,var(--line))}
-html.dark .tc-chip,html.dark .tb-chip{box-shadow:inset 0 0 0 1px rgba(255,255,255,.13)}
+html.dark .tc-chip{box-shadow:inset 0 0 0 1px rgba(255,255,255,.13)}
 @media (max-width:1120px){ .board-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:900px){
   .board-h{align-items:flex-start;flex-direction:column;gap:4px}
   .board-h h2{flex-wrap:wrap}
   .board-h h2 small{margin-left:0;flex:1 1 100%}
   .board-tip{white-space:normal;flex-wrap:wrap}
-  .tb-secs{margin-left:0;width:100%}
+  .tc-body{padding:2px 12px 4px}
+  .tc-body .sec-h h2{font-size:17px}
 }
 @media (max-width:520px){ .board-grid{grid-template-columns:1fr} }

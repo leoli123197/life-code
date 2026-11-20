@@ -213,7 +213,7 @@ const plain = s => String(s || '').replace(/\\([*_])/g, '$1').replace(/\*\*/g, '
  * 模块一 · 分类检索
  * =================================================================== */
 const DIMS = ['sec', 'ratio', 'lens', 'grade', 'money', 'time', 'will', 'who'];
-const state = { q: '', sec: new Set(), ratio: new Set(), lens: new Set(), grade: new Set(), money: new Set(), time: new Set(), will: new Set(), who: new Set(), dispute: false, todo: false, fav: false, view: 'search', boardOpen: true };
+const state = { q: '', sec: new Set(), ratio: new Set(), lens: new Set(), grade: new Set(), money: new Set(), time: new Set(), will: new Set(), who: new Set(), dispute: false, todo: false, fav: false, view: 'search', openTopic: -1 };
 let CUR_TERMS = [], CUR_KEY = '';
 
 /* —— 八大主题：34 节 → 八块。定义在 build/topics.mjs，与自测出题用的是同一份映射，
@@ -235,6 +235,9 @@ function bareView() {
   for (const d of ['ratio', 'lens', 'grade', 'money', 'time', 'will', 'who']) if (state[d].size) return false;
   return !state.dispute && !state.todo && !state.fav;
 }
+/** 首屏的判定：没有关键词、没有六维筛选、也没锁定某一节 —— 这时才铺主题卡网格。
+ *  只要动了任何筛选，网格就让位给下面那份按书序排的全列表。 */
+function boardMode() { return !!TOPICS.length && !state.sec.size && bareView(); }
 function svgIcon(key, cls) {
   const p = TICON[key]; if (!p) return '';
   return `<svg class="${cls || 'tc-svg'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
@@ -246,47 +249,80 @@ function topicRatio(i) {
   for (const e of E) if (set.has(String(e.sec))) c[e.ratio] = (c[e.ratio] || 0) + 1;
   return c;
 }
-function boardHTML() {
+function boardHTML(open) {
   if (!TOPICS.length) return '';
   const on = topicOn();
   return `<section class="board" id="board">
-<div class="board-h"><h2>${svgIcon('battery', 'b-svg')}按主题浏览<small>${META.entries} 条分在 ${TOPICS.length} 块里，覆盖全部 ${META.sections} 节。点卡片进这一块并跳到第一节，点卡片里的节号直接跳到那一节。</small></h2>
-<p class="board-tip"><button type="button" class="link-btn" id="board-all">不按主题，按书的顺序全看</button></p></div>
+<div class="board-h"><h2>${svgIcon('battery', 'b-svg')}按主题浏览<small>${META.entries} 条分在 ${TOPICS.length} 块里，覆盖全部 ${META.sections} 节。点卡片就地展开这一块，再点一下收起；卡片里的「第 N 节」直接跳到那一节。</small></h2>
+<p class="board-tip">展开一块，不离开这一页</p></div>
 <div class="board-grid">${TOPICS.map((t, i) => {
     const r = topicRatio(i), sum = r['极高'] + r['高'] + r['一般'] || 1;
     const seg = (k, cls) => `<i class="${cls}" style="width:${(r[k] / sum * 100).toFixed(1)}%"></i>`;
-    return `<article class="tcard" style="--tint:${t.tint}"${i === on ? ' data-on="1"' : ''}>
-<button type="button" class="tc-main" data-topic="${i}" aria-pressed="${i === on}" title="只看「${esc(t.name)}」这一块的 ${topicCount(i)} 条，并跳到第一节">
-<span class="tc-chip">${svgIcon(t.icon)}</span><span class="tc-h"><b class="tc-t">${esc(t.name)}</b><span class="tc-d">${esc(t.desc || t.tags[0] || '')}</span></span><span class="tc-go" aria-hidden="true">&#8599;</span></button>
-<div class="tc-foot"><span class="tc-pill">${topicCount(i)} 条</span><span class="tc-secs">${t.secs.map(no => { const s = SECS.get(String(no)); return `<a href="#sec-${no}" data-go="s${no}" title="${esc(s ? s.title : '')}">第 ${no} 节</a>`; }).join('<span class="tc-dot" aria-hidden="true">·</span>')}</span></div>
+    const isOpen = i === open;
+    return `<article class="tcard" style="--tint:${t.tint}" data-tc="${i}"${isOpen ? ' data-open="1"' : ''}${!isOpen && i === on ? ' data-on="1"' : ''}>
+<button type="button" class="tc-main" data-topic="${i}" aria-expanded="${isOpen}"${isOpen ? ` aria-controls="tc-body-${i}"` : ''} title="${isOpen ? '收起' : '展开'}「${esc(t.name)}」这一块的 ${topicCount(i)} 条">
+<span class="tc-chip">${svgIcon(t.icon)}</span><span class="tc-h"><b class="tc-t">${esc(t.name)}</b><span class="tc-d">${esc(t.desc || t.tags[0] || '')}</span></span><span class="tc-go" aria-hidden="true">&#9662;</span></button>
+<div class="tc-foot"><span class="tc-pill">${topicCount(i)} 条</span><span class="tc-secs">${t.secs.map(no => { const s = SECS.get(String(no)); return `<a href="#sec-${no}" data-jump-sec="${no}" title="${esc(s ? s.title : '')}">第 ${no} 节</a>`; }).join('<span class="tc-dot" aria-hidden="true">·</span>')}</span></div>
 <div class="tc-bar" role="img" aria-label="这块里性价比构成：极高 ${r['极高']} 条、高 ${r['高']} 条、一般 ${r['一般']} 条">${seg('极高', 'r3')}${seg('高', 'r2')}${seg('一般', 'r1')}</div>
+${isOpen ? `<div class="tc-body" id="tc-body-${i}"></div><div class="tc-end"><button type="button" class="link-btn" data-topic="${i}">收起「${esc(t.name)}」</button></div>` : ''}
 </article>`;
   }).join('')}</div></section>`;
 }
-function topicBarHTML(i) {
-  const t = TOPICS[i];
-  return `<div class="tbar" id="tbar" style="--tint:${t.tint}"><button type="button" class="ghost-btn mini" id="topic-back">&#9666; 八大主题</button>
-<span class="tb-chip">${svgIcon(t.icon)}</span>
-<b>${esc(t.name)}</b><span class="tb-n">${topicCount(i)} 条 · ${t.secs.length} 节</span>
-<span class="tb-secs">${t.secs.map(no => { const s = SECS.get(String(no)); return `<a href="#sec-${no}" data-go="s${no}">${no}. ${esc(s ? s.title : '')}</a>`; }).join('')}</span></div>`;
+/** 展开时挪进来的节块：收起来要放回原位，所以记住每块留下的注释占位 */
+const MOVED = [];
+function moveSections(i, body) {
+  for (const no of topicSecs(i)) {
+    const blk = document.getElementById('sec-' + no);
+    if (!blk || blk.parentElement === body) continue;
+    if (!blk.__ph) { const ph = document.createComment('ph-sec-' + no); blk.parentNode.insertBefore(ph, blk); blk.__ph = ph; MOVED.push(blk); }
+    body.appendChild(blk);
+  }
 }
-/** 首屏：没有筛选时给八张主题卡；点卡片＝进这一块，卡片网格收起、下面只留一条导航，
- *  内容直接顶到眼前（参考图那条吐槽就是「点主题不跳转」）。「◂ 八大主题」再把网格铺回来。 */
+function restoreSections() {
+  for (const blk of MOVED.splice(0)) if (blk.__ph) { blk.__ph.replaceWith(blk); delete blk.__ph; }
+}
+/** 首屏：八张主题卡；点卡片＝就地展开这一块的节标题、导读、分组提示和条目，再点收起。
+ *  展开的是「挪进来的真节点」——同一批 .sec-block，id、懒渲染、收藏、待办全照旧，不另起一套。
+ *  网格下面不再有任何散落内容：收起时 #blocks 整块隐藏，展开时它的节块已经搬进卡里。 */
 function renderBoard() {
   const host = $('#board-host'); if (!host) return;
-  if ($('#doc-view') && !$('#doc-view').hidden) { host.innerHTML = ''; return; }
-  const i = topicOn();
-  if (i >= 0) { host.innerHTML = (state.boardOpen ? boardHTML() : '') + topicBarHTML(i); return; }
-  host.innerHTML = bareView() ? boardHTML() : '';
+  const docOn = $('#doc-view') && !$('#doc-view').hidden;
+  if (docOn || !boardMode()) {
+    restoreSections(); state.openTopic = -1;
+    if (host.dataset.sig || host.innerHTML) { host.innerHTML = ''; host.dataset.sig = ''; }
+    return;
+  }
+  const sig = 'board:' + state.openTopic;
+  if (host.dataset.sig === sig && host.querySelector('.board')) return;
+  const open = state.openTopic;
+  restoreSections();                                   // 不管开哪块，先让节点归位（占位还在，只挪不建）
+  host.innerHTML = boardHTML(open);
+  if (open >= 0) { const body = host.querySelector('.tc-body'); if (body) moveSections(open, body); }
+  host.dataset.sig = sig;
 }
+/** 点卡片：展开 / 收起。展开后卡片铺满整行，卡头留在视野里；收起时页面不跳。 */
+function toggleTopic(i) {
+  const was = state.openTopic;
+  state.openTopic = was === i ? -1 : i;
+  renderBoard();
+  if (state.openTopic >= 0 && state.openTopic !== was) {
+    const card = document.querySelector('.tcard[data-open="1"]');
+    if (card && card.getBoundingClientRect().top < 70) scrollTo({ top: card.getBoundingClientRect().top + scrollY - 76, behavior: 'smooth' });
+  }
+}
+/** 把某一节所在的主题卡展开（不负责滚动，交给 gotoItem 统一落点） */
+function openTopicFor(secNo) {
+  const i = TOPIC_OF.get(String(secNo));
+  if (i == null || state.openTopic === i) return;
+  state.openTopic = i; renderBoard();
+}
+/** 侧栏组名在列表态下仍是「只看这一块」：灌节号筛选再跳到第一节 */
 function selectTopic(i) {
+  state.openTopic = -1;
   state.sec = new Set(topicSecs(i));
-  state.boardOpen = false;
   apply();
-  gotoItem('s' + TOPICS[i].secs[0]);            // 跳进这一块的第一个内容，不是停在原地
+  gotoItem('s' + TOPICS[i].secs[0]);
 }
-function showBoard() { state.boardOpen = true; apply(); window.scrollTo({ top: 0 }); }
-function clearTopic() { state.sec = new Set(); state.boardOpen = true; apply(); window.scrollTo({ top: 0 }); }
 
 const CHIPS = {
   ratio: [['极高', '性价比极高'], ['高', '高'], ['一般', '一般']],
@@ -447,7 +483,8 @@ function apply() {
   $('#cnt').textContent = shown;
   $('#cnt-total').textContent = E.length;
   $('#empty').hidden = shown !== 0;
-  $('#blocks').hidden = shown === 0;
+  // 首屏只留主题卡：下面的全列表整块藏起来，展开的节块已经搬进卡里，不需要它
+  $('#blocks').hidden = shown === 0 || boardMode();
   renderBoard();
   syncControls();
 }
@@ -487,16 +524,28 @@ function scrollToEl(el, align) {
 function gotoItem(key) {
   const isSec = key[0] === 's';
   const id = isSec ? 'sec-' + key.slice(1) : 'e-' + key;
-  const el = document.getElementById(id);
   switchView('search'); closeDoc();
+  let el = document.getElementById(id);
   if (!el) return;
-  if (!el.offsetParent) resetFilters();          // 目标被筛选藏起来了，先清筛选再跳
+  const secNo = String(isSec ? key.slice(1) : (el.dataset.sec || ''));
+  // 首屏里节块收在主题卡里：先把所属那块展开，节点才在文档里、才滚得到
+  if (boardMode() && TOPIC_OF.has(secNo)) openTopicFor(secNo);
+  el = document.getElementById(id);
+  if (!el) return;
+  if (!el.offsetParent) {                        // 目标被筛选藏起来了，先清筛选再跳
+    resetFilters();
+    if (boardMode() && TOPIC_OF.has(secNo)) openTopicFor(secNo);
+    el = document.getElementById(id);
+    if (!el) return;
+  }
   ensureRendered(el);
   if (!isSec) {                                  // 闪一下，让跳过去的卡片在长文档里看得见
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
     setTimeout(() => el.classList.remove('flash'), 1700);
   }
-  scrollToEl(el, isSec ? 'start' : 'center');
+  // 比一屏还高的卡片没法「居中」——居中会把标题顶到屏幕外面去，改从上沿落，标题一定看得见
+  const tall = el.getBoundingClientRect().height > innerHeight - 130;
+  scrollToEl(el, isSec || tall ? 'start' : 'center');
 }
 const POP = $('#xpop');
 let POP_T0 = 0;
@@ -759,7 +808,16 @@ function renderQuizSide() {
   h += '</div><p class="hint">勾了节就只出这些节的题（和上面的主题取交集）。</p></section>';
   h += `<section class="fgroup"><h4>本轮</h4><p class="hint">已答 ${Store.list('answers').filter(a => a.v).length} 题（历史累计）。基本情况：${validAge(p.ageYears) ? p.ageYears + ' 岁' : '未填'}${p.sex === 'f' ? ' · 女' : p.sex === 'm' ? ' · 男' : ''}。</p>
   <button class="ghost-btn wide" id="q-newrun">开始新一轮（清空本轮答题）</button></section>`;
+  // 重绘侧栏不该把「按节细选」的滚动位置弹回顶部：勾第 8、9、10 节时你得一直看得见它们
+  const wrap = side.closest('.side-scroll');
+  const prevList = side.querySelector('.sec-list');
+  const listTop = prevList ? prevList.scrollTop : 0, wrapTop = wrap ? wrap.scrollTop : 0;
+  const focusNo = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.sec;
   side.innerHTML = h;
+  const nextList = side.querySelector('.sec-list');
+  if (nextList) nextList.scrollTop = listTop;
+  if (wrap) wrap.scrollTop = wrapTop;
+  if (focusNo) { const nb = side.querySelector('.sec-list>button[data-sec="' + focusNo + '"]'); if (nb) nb.focus({ preventScroll: true }); }
 }
 
 function renderQuiz() {
@@ -1561,21 +1619,34 @@ function switchView(v) {
 function wireEvents() {
   $$('#modules button').forEach(b => b.onclick = () => switchView(b.dataset.view));
   let tm;
-  $('#q').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => { state.q = e.target.value.trim(); apply(); }, 120); });
+  $('#q').addEventListener('input', e => { clearTimeout(tm); tm = setTimeout(() => {
+    const wasBoard = boardMode();
+    state.q = e.target.value.trim(); apply();
+    // 在首屏里打字（或把搜索清空回到首屏）时，版面重心整个换了一处，落在原来的滚动位置只会看到半截
+    if (boardMode() !== wasBoard) scrollTo({ top: 0 });
+  }, 120); });
   $$('[data-dim]').forEach(g => g.addEventListener('click', ev => {
     const fold = ev.target.closest('[data-fold]');
     if (fold) { const toc = $('[data-toc-for="' + fold.dataset.fold + '"]'); toc.hidden = !toc.hidden; fold.textContent = toc.hidden ? '▸' : '▾'; return; }
     const b = ev.target.closest('[data-v]'); if (!b) return;
     const dim = b.closest('[data-dim]').dataset.dim, v = b.dataset.v, set = state[dim];
-    if (dim === 'sec') { set.clear(); if (v) set.add(v); if (v) { const toc = $('[data-toc-for="' + v + '"]'); if (toc) { toc.hidden = false; $('[data-fold="' + v + '"]').textContent = '▾'; } } }
+    // 同一节再点一次＝取消这一节；没勾别的筛选时版面自然退回首页主题卡
+    let unsec = false;
+    if (dim === 'sec') { unsec = !!v && set.size === 1 && set.has(v); set.clear(); if (v && !unsec) set.add(v); if (v && !unsec) { const toc = $('[data-toc-for="' + v + '"]'); if (toc) { toc.hidden = false; $('[data-fold="' + v + '"]').textContent = '▾'; } } }
     else if (dim === 'who') { const on = !set.has(v); if (v === '无') set.clear(); else set.delete('无'); if (on) set.add(v); }
     else { set.has(v) ? set.delete(v) : set.add(v); }
-    apply(); closeDoc(); $('#blocks').hidden = false;
-    if (dim === 'sec' && v) { const blk = document.getElementById('sec-' + v); ensureRendered(blk.querySelector('.card')); scrollToEl(blk, 'start'); }
+    apply(); closeDoc();
+    if (dim === 'sec' && v && !unsec) { const blk = document.getElementById('sec-' + v); ensureRendered(blk.querySelector('.card')); scrollToEl(blk, 'start'); }
     else scrollTo({ top: 0 });
   }));
-  // 侧栏主题组名：点一下＝只看这一整块，和首屏卡片同一口径
-  $('#sec-list').addEventListener('click', ev => { const g = ev.target.closest('[data-topic]'); if (g) selectTopic(+g.dataset.topic); });
+  // 侧栏主题组名：首屏＝展开那张卡（不离开这一页）；列表态＝只看这一整块
+  $('#sec-list').addEventListener('click', ev => {
+    const g = ev.target.closest('[data-topic]'); if (!g) return;
+    if (boardMode()) { toggleTopic(+g.dataset.topic); scrollTo({ top: 0, behavior: 'smooth' }); }
+    // 列表态点组名＝只看这一整块；同一块再点一次＝取消，退回首页主题卡
+    else if (topicOn() === +g.dataset.topic && bareView()) resetFilters();
+    else selectTopic(+g.dataset.topic);
+  });
   $('#f-dispute').onchange = e => { state.dispute = e.target.checked; apply(); };
   $('#f-todo').onchange = e => { state.todo = e.target.checked; apply(); };
   $('#f-fav').onchange = e => { state.fav = e.target.checked; apply(); };
@@ -1585,10 +1656,10 @@ function wireEvents() {
   // 卡片内动作（委托）
   $('#main').addEventListener('click', ev => {
     const t = ev.target;
+    const js = t.closest('[data-jump-sec]');
+    if (js) { ev.preventDefault(); gotoItem('s' + js.dataset.jumpSec); return; }   // 卡里的节号：展开这块再落到那一节
     const tc = t.closest('[data-topic]');
-    if (tc) { selectTopic(+tc.dataset.topic); return; }
-    if (t.closest('#topic-back')) { showBoard(); return; }
-    if (t.closest('#board-all')) { clearTopic(); return; }
+    if (tc) { toggleTopic(+tc.dataset.topic); return; }
     const fav = t.closest('[data-fav]');
     if (fav) { const on = Fav.toggle(fav.dataset.fav); fav.classList.toggle('on', on); fav.textContent = on ? '★ 已收藏' : '★ 收藏'; if (state.fav) apply(); return; }
     const cp = t.closest('[data-copy]');
