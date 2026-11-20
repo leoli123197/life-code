@@ -1,0 +1,17 @@
+# —— 原书文字：只在你本机，不入库（用 README 里的命令重新生成，见「怎么构建」）
+book_raw.txt
+build/raw/
+build/data/
+
+# —— 打包产物（单文件 HTML / 部署副本）
+高性价比人生指南工作台.html
+dist/
+
+# —— Qoder Sites 本地描述符（内含上传快照，8 MB+）
+*.qoder.site
+
+# —— 杂项
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
